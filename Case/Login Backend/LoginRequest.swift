@@ -1,11 +1,3 @@
-//
-//  LoginRequest.swift
-//  Case
-//
-//  Created by SAIL L1 on 27/02/26.
-//
-
-
 import Foundation
 
 struct LoginRequest: Codable {
@@ -17,32 +9,35 @@ struct LoginResponse: Codable {
     let status: String
 }
 
-class AuthAPI {
+final class AuthAPI {
 
     static let shared = AuthAPI()
 
+    // ✅ Simulator: 127.0.0.1 works if FastAPI is running on your Mac
+    // If you run on a real iPhone, you must use your Mac Wi-Fi IP instead.
     private let baseURL = "http://127.0.0.1:8000"
 
     func login(doctorId: String, password: String) async -> Bool {
 
-        guard let url = URL(string: "\(baseURL)/login") else {
-            return false
-        }
+        guard let url = URL(string: "\(baseURL)/login") else { return false }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let body = LoginRequest(doctor_id: doctorId, password: password)
 
         do {
-            request.httpBody = try JSONEncoder().encode(body)
+            req.httpBody = try JSONEncoder().encode(body)
 
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await URLSession.shared.data(for: req)
 
-            let response = try JSONDecoder().decode(LoginResponse.self, from: data)
+            if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+                return false
+            }
 
-            return response.status == "success"
+            let decoded = try JSONDecoder().decode(LoginResponse.self, from: data)
+            return decoded.status == "success"
 
         } catch {
             print("Login error:", error)
