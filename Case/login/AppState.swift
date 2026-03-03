@@ -3,6 +3,7 @@ import SwiftUI
 final class AppState: ObservableObject {
 
     enum Screen {
+        case splash
         case landing
         case doctorLogin
         case doctorDashboard
@@ -10,5 +11,5 @@ final class AppState: ObservableObject {
         case clinicDashboard
     }
 
-    @Published var screen: Screen = .landing
+    @Published var screen: Screen = .splash
 }

@@ -3,7 +3,7 @@ import SwiftUI
 struct ResetPasswordView: View {
 
     let email: String
-    @Environment(\.dismiss) private var dismiss
+    @Binding var path: NavigationPath
 
     @State private var newPassword = ""
     @State private var confirmPassword = ""
@@ -28,6 +28,7 @@ struct ResetPasswordView: View {
             .ignoresSafeArea()
 
             VStack(spacing: 16) {
+
                 Text("Create New Password")
                     .font(.title.bold())
                     .foregroundColor(.white)
@@ -38,17 +39,9 @@ struct ResetPasswordView: View {
 
                 VStack(spacing: 12) {
 
-                    passwordRow(
-                        title: "New Password",
-                        text: $newPassword,
-                        show: $showNew
-                    )
+                    passwordRow(title: "New Password", text: $newPassword, show: $showNew)
 
-                    passwordRow(
-                        title: "Confirm Password",
-                        text: $confirmPassword,
-                        show: $showConfirm
-                    )
+                    passwordRow(title: "Confirm Password", text: $confirmPassword, show: $showConfirm)
 
                     Button {
                         saveNewPassword()
@@ -63,7 +56,7 @@ struct ResetPasswordView: View {
                     }
                     .background(.white)
                     .foregroundColor(.black)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
                     .disabled(!canSave || isSaving)
                     .opacity(!canSave ? 0.75 : 1.0)
 
@@ -75,18 +68,25 @@ struct ResetPasswordView: View {
                 .padding(18)
                 .background(.white.opacity(0.16))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    RoundedRectangle(cornerRadius: 24)
                         .stroke(.white.opacity(0.22), lineWidth: 1)
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 24))
                 .padding(.horizontal, 18)
             }
             .padding(.top, 30)
         }
         .navigationBarTitleDisplayMode(.inline)
         .alert("CaseCraft", isPresented: $showAlert) {
-            Button("OK", role: .cancel) {}
-        } message: { Text(alertMsg) }
+            Button("OK") {
+                // ✅ Ensure it happens on main thread
+                DispatchQueue.main.async {
+                    path = NavigationPath()   // ✅ Pop to DoctorLogin root
+                }
+            }
+        } message: {
+            Text(alertMsg)
+        }
     }
 
     private var canSave: Bool {
@@ -99,19 +99,11 @@ struct ResetPasswordView: View {
         guard canSave else { return }
         isSaving = true
 
-        // TODO: Call backend API to update password by email.
-        // For now demo success:
+        // TODO: call backend API here
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             isSaving = false
             alertMsg = "Password updated successfully."
             showAlert = true
-
-            // Go back to Login after a short delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                // This dismisses one screen; if needed, user taps back twice.
-                // Better approach: pop to root using NavigationStack path (can do if you want).
-                dismiss()
-            }
         }
     }
 

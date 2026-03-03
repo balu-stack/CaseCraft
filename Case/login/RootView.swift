@@ -7,6 +7,9 @@ struct RootView: View {
     var body: some View {
         switch appState.screen {
 
+        case .splash:
+            SplashView()
+
         case .landing:
             CaseCraftLoginLandingView()
 

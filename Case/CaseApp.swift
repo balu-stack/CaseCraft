@@ -7,7 +7,7 @@ struct CaseApp: App {
 
     var body: some Scene {
         WindowGroup {
-            SplashView()
+            RootView()
                 .environmentObject(appState)
         }
     }

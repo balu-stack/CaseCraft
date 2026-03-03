@@ -1,19 +1,23 @@
 import SwiftUI
 
-struct ForgotPasswordEmailView: View {
+struct ForgotPasswordView: View {
 
-    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
+    @Binding var path: NavigationPath
 
     @State private var email = ""
-    @State private var isSending = false
+    @State private var otp = ""
+
+    @State private var otpSent = false
+    @State private var isLoading = false
+
     @State private var showAlert = false
     @State private var alertMsg = ""
 
-    // navigation
-    @State private var goOtp = false
-
     var body: some View {
+
         ZStack {
+
             LinearGradient(
                 colors: [
                     Color(red: 24/255, green: 28/255, blue: 66/255),
@@ -25,92 +29,127 @@ struct ForgotPasswordEmailView: View {
             )
             .ignoresSafeArea()
 
-            VStack(spacing: 16) {
+            VStack(spacing: 18) {
+
                 Text("Forgot Password")
                     .font(.title.bold())
                     .foregroundColor(.white)
 
-                Text("Enter your registered email to receive OTP.")
-                    .font(.subheadline)
-                    .foregroundColor(.white.opacity(0.85))
-                    .multilineTextAlignment(.center)
+                HStack {
+                    Image(systemName: "envelope.fill")
+                        .foregroundColor(.white)
 
-                VStack(spacing: 12) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "envelope.fill")
-                            .foregroundColor(.white.opacity(0.9))
-
-                        TextField("Email address", text: $email)
-                            .textInputAutocapitalization(.never)
-                            .keyboardType(.emailAddress)
-                            .autocorrectionDisabled(true)
-                            .foregroundColor(.white)
-                    }
-                    .modifier(GlassInputStyle())
-
-                    Button {
-                        sendOtp()
-                    } label: {
-                        HStack(spacing: 10) {
-                            if isSending { ProgressView().tint(.black) }
-                            Text(isSending ? "Sending..." : "Send OTP")
-                                .fontWeight(.semibold)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                    }
-                    .background(.white)
-                    .foregroundColor(.black)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .disabled(!isValidEmail(email) || isSending)
-                    .opacity(!isValidEmail(email) ? 0.75 : 1.0)
-
-                    Button("Back to Login") { dismiss() }
-                        .foregroundColor(.white.opacity(0.9))
-                        .padding(.top, 6)
+                    TextField("Enter your email", text: $email)
+                        .foregroundColor(.white)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled(true)
+                        .keyboardType(.emailAddress)
                 }
-                .padding(18)
-                .background(.white.opacity(0.16))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(.white.opacity(0.22), lineWidth: 1)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                .padding(.horizontal, 18)
+                .modifier(GlassInputStyle())
 
-                NavigationLink(
-                    destination: OTPVerifyView(email: email),
-                    isActive: $goOtp
-                ) { EmptyView() }
+                if otpSent {
+                    VStack(spacing: 10) {
+
+                        HStack {
+                            Image(systemName: "number.circle.fill")
+                                .foregroundColor(.white)
+
+                            TextField("Enter OTP", text: $otp)
+                                .keyboardType(.numberPad)
+                                .foregroundColor(.white)
+                        }
+                        .modifier(GlassInputStyle())
+
+                        Button("Resend OTP") { resendOtp() }
+                            .font(.footnote.weight(.semibold))
+                            .foregroundColor(.white.opacity(0.95))
+                            .disabled(isLoading)
+                            .opacity(isLoading ? 0.7 : 1.0)
+                    }
+                }
+
+                Button {
+                    if otpSent { verifyOtp() }
+                    else { sendOtp() }
+                } label: {
+                    HStack(spacing: 10) {
+                        if isLoading { ProgressView().tint(.black) }
+                        Text(isLoading ? "Please wait..." : (otpSent ? "Verify OTP" : "Send OTP"))
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                }
+                .background(.white)
+                .foregroundColor(.black)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .disabled(isLoading)
             }
-            .padding(.top, 30)
+            .padding(18)
         }
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(for: AuthRoute.self) { route in
+            if case .resetPassword(let email) = route {
+                ResetPasswordView(email: email, path: $path)
+                    .environmentObject(appState)
+            }
+        }
         .alert("CaseCraft", isPresented: $showAlert) {
             Button("OK", role: .cancel) {}
-        } message: { Text(alertMsg) }
+        } message: {
+            Text(alertMsg)
+        }
     }
 
     private func sendOtp() {
-        guard isValidEmail(email) else { return }
-        isSending = true
 
-        // TODO: Call backend API to send OTP to email.
-        // For now, simulate success:
+        let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmed.isEmpty else {
+            alertMsg = "Enter email"
+            showAlert = true
+            return
+        }
+
+        isLoading = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-            isSending = false
-            goOtp = true
+            isLoading = false
+            otpSent = true
+            otp = ""
+            alertMsg = "OTP sent successfully"
+            showAlert = true
         }
     }
 
-    private func isValidEmail(_ s: String) -> Bool {
-        let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.contains("@") && trimmed.contains(".") && trimmed.count >= 6
+    private func resendOtp() {
+        isLoading = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            isLoading = false
+            otp = ""
+            alertMsg = "OTP resent successfully"
+            showAlert = true
+        }
+    }
+
+    private func verifyOtp() {
+
+        let code = otp.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard code == "1234" else {
+            alertMsg = "Invalid OTP"
+            showAlert = true
+            return
+        }
+
+        path.append(AuthRoute.resetPassword(email: email))
     }
 }
 
 private struct GlassInputStyle: ViewModifier {
+
     func body(content: Content) -> some View {
+
         content
             .padding()
             .background(.white.opacity(0.14))
@@ -118,6 +157,8 @@ private struct GlassInputStyle: ViewModifier {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .stroke(.white.opacity(0.22), lineWidth: 1)
             )
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
     }
 }

@@ -1,3 +1,11 @@
+//
+//  LoginRequest.swift
+//  Case
+//
+//  Created by SAIL L1 on 02/03/26.
+//
+
+
 import Foundation
 
 struct LoginRequest: Codable {
